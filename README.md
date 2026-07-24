@@ -48,7 +48,7 @@ PORT=5000
 ```
 
    This starts:
-   - Backend on `http://localhost:5001`
+   - Backend on `http://localhost:5000`
    - Frontend (USSD simulator) on `http://localhost:5173`
 
    Or run them separately:
