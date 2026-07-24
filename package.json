@@ -1,0 +1,19 @@
+{
+  "name": "codalbit",
+  "version": "1.0.0",
+  "description": "Online USSD-based savings cooperative platform (backend + USSD simulator)",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix ussdbnd && npm install --prefix ussdc",
+    "dev": "concurrently -n BACKEND,CLIENT -c green,cyan \"npm run dev --prefix ussdbnd\" \"npm run dev --prefix ussdc\"",
+    "dev:backend": "npm run dev --prefix ussdbnd",
+    "dev:client": "npm run dev --prefix ussdc",
+    "seed": "npm run seed --prefix ussdbnd"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "all": "^0.0.0"
+  }
+}
