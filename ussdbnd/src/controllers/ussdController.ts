@@ -220,14 +220,12 @@ async function handleMainMenu(session: USSDSession, input: string): Promise<stri
 
     const circles = member.circles as any[];
 
-    // Only one circle — show status directly, no need to ask
     if (circles.length === 1) {
       const status = await getCycleStatusText(circles[0]._id.toString());
       endSession(session.sessionId);
       return status;
     }
 
-    // Multiple circles — ask which one
     const options = circles.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
     updateSession(session.sessionId, {
       step: 'STATUS_SELECT_CIRCLE',

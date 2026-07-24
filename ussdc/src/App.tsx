@@ -83,13 +83,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0a0d0a] flex items-center justify-center p-6 gap-10 flex-wrap">
-      {/* ambient glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#7ED321]/5 rounded-full blur-[120px]" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#7ED321]/5 rounded-full blur-[120px]" />
       </div>
-
-      {/* Phone frame */}
       <div className="relative w-[300px] z-10">
         <div className="bg-gradient-to-b from-[#1a1d1a] to-[#0d0f0d] rounded-[3rem] p-3 shadow-2xl shadow-black/80 border border-[#2a2e2a]">
           {/* notch */}
@@ -98,8 +95,6 @@ export default function App() {
               <div className="w-1.5 h-1.5 bg-[#1a1d1a] rounded-full" />
             </div>
           </div>
-
-          {/* screen bezel */}
           <div className="bg-black rounded-[2rem] p-3">
             {/* status bar */}
             <div className="flex justify-between items-center px-2 py-2 text-[10px] text-[#8a938a] font-medium tracking-wide">
@@ -109,8 +104,6 @@ export default function App() {
                 USSD
               </span>
             </div>
-
-            {/* USSD screen — taller now */}
             <div className="bg-gradient-to-b from-[#0d1a0a] to-[#0a140a] rounded-2xl p-4 min-h-[320px] border border-[#1c2e18] shadow-inner shadow-black/60">
               <pre className="font-mono text-[13px] leading-relaxed text-[#7ED321] whitespace-pre-wrap break-words">
                 {loading ? (
@@ -121,7 +114,6 @@ export default function App() {
               </pre>
             </div>
 
-            {/* controls */}
             <div className="mt-3 space-y-2 px-1 pb-1">
               {!sessionActive ? (
                 <button
@@ -159,8 +151,6 @@ export default function App() {
               </button>
             </div>
           </div>
-
-          {/* home indicator */}
           <div className="flex justify-center mt-2">
             <div className="w-24 h-1 bg-[#2a2e2a] rounded-full" />
           </div>
@@ -170,8 +160,6 @@ export default function App() {
           {sessionId} · {phoneNumber}
         </div>
       </div>
-
-      {/* Session log panel */}
       <div className="w-[380px] z-10">
         <div className="bg-[#0f120f]/90 backdrop-blur rounded-3xl border border-[#1e221e] shadow-2xl shadow-black/50 overflow-hidden">
           <div className="px-5 py-4 border-b border-[#1e221e] flex items-center justify-between bg-[#111411]">
