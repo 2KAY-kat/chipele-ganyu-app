@@ -1,4 +1,4 @@
-# USSD DEMO 
+# USSD DEMO
 
 USSD-based savings cooperative platform. Members register, join fixed-tier savings circles, contribute each cycle, and receive automatic rotating payouts — all through a simulated USSD phone interface.
 
@@ -6,7 +6,7 @@ USSD-based savings cooperative platform. Members register, join fixed-tier savin
 
 ```bash
 codalbit/
-├── ussdbnd/ # Backend, Express + TypeScript + MongoDB (USSD webhook logic)
+├── ussdbnd/ # Backend, Express + TypeScript + SQLite (USSD webhook logic)
 └── ussdc/ # Frontend, React + Vite + Tailwind (USSD phone simulator)
 ```
 
@@ -14,7 +14,7 @@ codalbit/
 
 - Node.js 18+
 - npm
-- A MongoDB connection string (local or Atlas)
+- (No database server required — uses SQLite, file-based)
 
 ## Setup
 
@@ -36,8 +36,8 @@ codalbit/
 
 Create `ussdbnd/.env`:
 
-MONGO_URI=your_mongodb_connection_string
-PORT=5000
+DATABASE_URL=./data/ussd.db
+PORT=5001
 
 (Check `ussdbnd/.env.example` for the full list if present.)
 
@@ -48,7 +48,7 @@ PORT=5000
 ```
 
    This starts:
-   - Backend on `http://localhost:5000`
+   - Backend on `http://localhost:5001`
    - Frontend (USSD simulator) on `http://localhost:5173`
 
    Or run them separately:
@@ -73,10 +73,10 @@ Open `http://localhost:5173` in your browser. Click **Dial *123#** to start a se
 ## Notes
 
 - The five savings circles are created automatically on server startup — no manual seeding required.
-- Mobile money payment is simulated (no live integration) — contributions and payouts are recorded as ledger entries in MongoDB.
+- Mobile money payment is simulated (no live integration) — contributions and payouts are recorded as ledger entries in SQLite.
 - Sessions are held in-memory on the backend with a short TTL, mimicking real USSD session behavior.
 
 ## Tech Stack
 
-- **Backend:** Node.js, Express, TypeScript, MongoDB, Mongoose, bcrypt
+- **Backend:** Node.js, Express, TypeScript, SQLite (via Drizzle ORM), bcrypt
 - **Frontend:** React, Vite, TypeScript, Tailwind CSS

@@ -1,15 +1,14 @@
-
-import Member from '../models/Member';
-import Contribution from '../models/Contribution';
-
+import { eq, sql } from 'drizzle-orm';
+import { db } from '../config/db';
+import { members, contributions } from '../db/schema';
 
 export async function generateMemberId(): Promise<string> {
-  const count = await Member.countDocuments();
-  const next = count + 1;
+  const result = db.select({ count: sql<number>`COUNT(*)` }).from(members).get();
+  const next = (result?.count ?? 0) + 1;
   const padded = String(next).padStart(3, '0');
   const candidate = `MEM${padded}`;
 
-  const exists = await Member.findOne({ memberId: candidate });
+  const exists = db.select().from(members).where(eq(members.memberId, candidate)).get();
   if (exists) {
     return generateFallbackMemberId();
   }
@@ -23,11 +22,10 @@ async function generateFallbackMemberId(): Promise<string> {
   do {
     const rand = Math.floor(Math.random() * 9000 + 1000);
     candidate = `MEM${rand}`;
-    exists = await Member.findOne({ memberId: candidate });
+    exists = db.select().from(members).where(eq(members.memberId, candidate)).get();
   } while (exists);
   return candidate;
 }
-
 
 export async function generateReference(): Promise<string> {
   let candidate: string;
@@ -35,7 +33,7 @@ export async function generateReference(): Promise<string> {
   do {
     const rand = Math.floor(Math.random() * 9000 + 1000);
     candidate = `RCC-${rand}`;
-    exists = await Contribution.findOne({ reference: candidate });
+    exists = db.select().from(contributions).where(eq(contributions.reference, candidate)).get();
   } while (exists);
   return candidate;
 }

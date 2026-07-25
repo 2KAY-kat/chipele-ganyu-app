@@ -1,7 +1,6 @@
-
-import Circle, { ICircle } from '../models/Circle';
-import Contribution from '../models/Contribution';
-import WalletTransaction from '../models/WalletTransaction';
+import { eq, and, sql } from 'drizzle-orm';
+import { db } from '../config/db';
+import { circles, circleMembers, contributions, walletTransactions, members } from '../db/schema';
 import { generateReference } from '../utils/referenceGenerator';
 
 export const DEFAULT_CIRCLES = [
@@ -14,90 +13,146 @@ export const DEFAULT_CIRCLES = [
 
 export async function ensureDefaultCircles(): Promise<void> {
   for (const def of DEFAULT_CIRCLES) {
-    const exists = await Circle.findOne({ name: def.name });
+    const exists = db.select().from(circles).where(eq(circles.name, def.name)).get();
     if (!exists) {
-      await Circle.create({
+      db.insert(circles).values({
         name: def.name,
         cycleNumber: 1,
         contributionAmount: def.contributionAmount,
-        members: [],
-        payoutOrder: [],
         currentPayoutIndex: 0,
         status: 'active',
-      });
+      }).run();
       console.log(`Created default circle: ${def.name} (MK${def.contributionAmount})`);
     }
   }
 }
 
-export async function findCircleById(circleId: string): Promise<ICircle | null> {
-  return Circle.findById(circleId);
+export async function findCircleById(circleId: number) {
+  return db.select().from(circles).where(eq(circles.id, circleId)).get();
 }
 
-export async function getAllCircles(): Promise<ICircle[]> {
-  return Circle.find().sort({ contributionAmount: 1 });
+export async function getAllCircles() {
+  return db.select().from(circles).orderBy(circles.contributionAmount).all();
 }
 
-export async function getCircleWithPayoutOrder(circle: ICircle): Promise<ICircle> {
-  await circle.populate('payoutOrder');
-  return circle;
+export async function getCircleWithPayoutOrder(circleId: number) {
+  const circle = db.select().from(circles).where(eq(circles.id, circleId)).get();
+  if (!circle) return null;
+
+  const payoutOrder = db.select({
+    id: members.id,
+    memberId: members.memberId,
+    fullName: members.fullName,
+  })
+    .from(circleMembers)
+    .innerJoin(members, eq(circleMembers.memberId, members.id))
+    .where(eq(circleMembers.circleId, circleId))
+    .orderBy(circleMembers.payoutOrderIndex)
+    .all();
+
+  return { ...circle, payoutOrder };
+}
+
+export async function getMemberCount(circleId: number): Promise<number> {
+  const result = db.select({ count: sql<number>`COUNT(*)` })
+    .from(circleMembers)
+    .where(eq(circleMembers.circleId, circleId))
+    .get();
+  return result?.count ?? 0;
 }
 
 export async function countCompletedContributions(
-  circleId: string,
+  circleId: number,
   cycleNumber: number
 ): Promise<number> {
-  return Contribution.countDocuments({
-    circle: circleId,
-    cycleNumber,
-    status: 'completed',
-  });
+  const result = db.select({ count: sql<number>`COUNT(*)` })
+    .from(contributions)
+    .where(and(
+      eq(contributions.circleId, circleId),
+      eq(contributions.cycleNumber, cycleNumber),
+      eq(contributions.status, 'completed')
+    ))
+    .get();
+  return result?.count ?? 0;
 }
 
-export async function isMemberInCircle(circle: ICircle, memberObjectId: any): Promise<boolean> {
-  return circle.members.some((id: any) => id.equals(memberObjectId));
+export async function isMemberInCircle(circleId: number, memberId: number): Promise<boolean> {
+  const row = db.select()
+    .from(circleMembers)
+    .where(and(
+      eq(circleMembers.circleId, circleId),
+      eq(circleMembers.memberId, memberId)
+    ))
+    .get();
+  return !!row;
 }
 
+export async function joinCircle(circleId: number, memberId: number): Promise<void> {
+  const already = await isMemberInCircle(circleId, memberId);
+  if (already) return;
 
-export async function joinCircle(circle: ICircle, memberObjectId: any): Promise<void> {
-  if (await isMemberInCircle(circle, memberObjectId)) return;
-  circle.members.push(memberObjectId);
-  circle.payoutOrder.push(memberObjectId);
-  await circle.save();
+  const maxIndex = db.select({ max: sql<number>`COALESCE(MAX(payout_order_index), -1)` })
+    .from(circleMembers)
+    .where(eq(circleMembers.circleId, circleId))
+    .get();
+
+  db.insert(circleMembers).values({
+    circleId,
+    memberId,
+    payoutOrderIndex: (maxIndex?.max ?? -1) + 1,
+  }).run();
 }
-
 
 export async function checkAndProcessPayout(
-  circleId: string
+  circleId: number
 ): Promise<{ recipientMemberId: string; amount: number; reference: string } | null> {
-  const circle = await Circle.findById(circleId);
-  if (!circle || circle.members.length === 0) return null;
+  const circle = db.select().from(circles).where(eq(circles.id, circleId)).get();
+  if (!circle) return null;
 
-  const paidCount = await countCompletedContributions(circle._id.toString(), circle.cycleNumber);
-  if (paidCount < circle.members.length) return null;
+  const mCount = await getMemberCount(circleId);
+  if (mCount === 0) return null;
 
-  await circle.populate('payoutOrder');
-  const recipient: any = circle.payoutOrder[circle.currentPayoutIndex];
+  const paidCount = await countCompletedContributions(circleId, circle.cycleNumber);
+  if (paidCount < mCount) return null;
+
+  const payoutOrder = db.select({
+    id: members.id,
+    memberId: members.memberId,
+  })
+    .from(circleMembers)
+    .innerJoin(members, eq(circleMembers.memberId, members.id))
+    .where(eq(circleMembers.circleId, circleId))
+    .orderBy(circleMembers.payoutOrderIndex)
+    .all();
+
+  const recipient = payoutOrder[circle.currentPayoutIndex];
   if (!recipient) return null;
 
-  const pool = await Contribution.aggregate([
-    { $match: { circle: circle._id, cycleNumber: circle.cycleNumber, status: 'completed' } },
-    { $group: { _id: null, total: { $sum: '$amount' } } },
-  ]);
-  const poolAmount = pool[0]?.total ?? 0;
+  const poolResult = db.select({ total: sql<number>`COALESCE(SUM(amount), 0)` })
+    .from(contributions)
+    .where(and(
+      eq(contributions.circleId, circleId),
+      eq(contributions.cycleNumber, circle.cycleNumber),
+      eq(contributions.status, 'completed')
+    ))
+    .get();
+  const poolAmount = poolResult?.total ?? 0;
 
   const reference = await generateReference();
 
-  await WalletTransaction.create({
-    member: recipient._id,
+  db.insert(walletTransactions).values({
+    memberId: recipient.id,
     walletType: 'disbursement',
     direction: 'credit',
     amount: poolAmount,
     reference,
-  });
+  }).run();
 
-  circle.currentPayoutIndex = (circle.currentPayoutIndex + 1) % circle.payoutOrder.length;
-  circle.cycleNumber += 1;
-  await circle.save();
+  const newIndex = (circle.currentPayoutIndex + 1) % payoutOrder.length;
+  db.update(circles)
+    .set({ currentPayoutIndex: newIndex, cycleNumber: circle.cycleNumber + 1 })
+    .where(eq(circles.id, circleId))
+    .run();
+
   return { recipientMemberId: recipient.memberId, amount: poolAmount, reference };
 }

@@ -1,7 +1,6 @@
-
 import { Request, Response } from 'express';
-import Contribution from '../models/Contribution';
-import WalletTransaction from '../models/WalletTransaction';
+import { db } from '../config/db';
+import { contributions, walletTransactions } from '../db/schema';
 import { getSession, updateSession, endSession, USSDSession } from '../services/sessionService';
 import { generateMemberId, generateReference } from '../utils/referenceGenerator';
 import {
@@ -88,7 +87,6 @@ async function routeStep(session: USSDSession, input: string): Promise<string> {
 const MAIN_MENU_TEXT =
   '1. Make Contribution\n2. Check Balance\n3. Check Cycle Status\n4. Join a Circle\n5. Help\n0. Logout';
 
-// ---------- Screen 1: Welcome ----------
 function handleWelcome(session: USSDSession, input: string): string {
   if (input === '') {
     return 'CON Welcome to RCC Cooperative!\n1. Register\n2. Login\n0. Exit';
@@ -108,7 +106,6 @@ function handleWelcome(session: USSDSession, input: string): string {
   return 'CON Invalid option.\n1. Register\n2. Login\n0. Exit';
 }
 
-// ---------- Registration flow ----------
 function handleRegisterName(session: USSDSession, input: string): string {
   updateSession(session.sessionId, {
     step: 'REGISTER_NATIONAL_ID',
@@ -153,7 +150,6 @@ async function handleRegisterPin(session: USSDSession, input: string): Promise<s
   return `END Registration successful!\nYour Member ID: ${memberId}\nDial in again to login and join a circle.`;
 }
 
-// ---------- Login flow ----------
 function handleLoginMemberId(session: USSDSession, input: string): string {
   updateSession(session.sessionId, {
     step: 'LOGIN_PIN',
@@ -184,7 +180,6 @@ async function handleLoginPin(session: USSDSession, input: string): Promise<stri
   return `CON Welcome, ${member.fullName}!\n${MAIN_MENU_TEXT}`;
 }
 
-// ---------- Main menu ----------
 async function handleMainMenu(session: USSDSession, input: string): Promise<string> {
   if (input === '1') {
     const member = await getMemberWithCircles(session.memberId!);
@@ -193,13 +188,13 @@ async function handleMainMenu(session: USSDSession, input: string): Promise<stri
       return 'END You are not part of any savings circle yet.\nSelect option 4 next time to join one.';
     }
 
-    const circleOptions = (member.circles as any[])
+    const circleOptions = member.circles
       .map((c, i) => `${i + 1}. ${c.name} (MK${c.contributionAmount})`)
       .join('\n');
 
     updateSession(session.sessionId, {
       step: 'SELECT_CIRCLE',
-      data: { ...session.data, circleIds: (member.circles as any[]).map((c) => c._id.toString()) },
+      data: { ...session.data, circleIds: member.circles.map((c) => c.id) },
     });
 
     return `CON Select Circle:\n${circleOptions}\n0. Back`;
@@ -218,10 +213,10 @@ async function handleMainMenu(session: USSDSession, input: string): Promise<stri
       return 'END You are not part of any savings circle.';
     }
 
-    const circles = member.circles as any[];
+    const circles = member.circles;
 
     if (circles.length === 1) {
-      const status = await getCycleStatusText(circles[0]._id.toString());
+      const status = await getCycleStatusText(circles[0].id);
       endSession(session.sessionId);
       return status;
     }
@@ -229,7 +224,7 @@ async function handleMainMenu(session: USSDSession, input: string): Promise<stri
     const options = circles.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
     updateSession(session.sessionId, {
       step: 'STATUS_SELECT_CIRCLE',
-      data: { ...session.data, statusCircleIds: circles.map((c) => c._id.toString()) },
+      data: { ...session.data, statusCircleIds: circles.map((c) => c.id) },
     });
     return `CON Select Circle:\n${options}\n0. Back`;
   }
@@ -242,7 +237,7 @@ async function handleMainMenu(session: USSDSession, input: string): Promise<stri
 
     updateSession(session.sessionId, {
       step: 'JOIN_CIRCLE_SELECT',
-      data: { ...session.data, allCircleIds: allCircles.map((c) => c._id.toString()) },
+      data: { ...session.data, allCircleIds: allCircles.map((c) => c.id) },
     });
 
     return `CON Select a Circle to Join:\n${options}\n0. Back`;
@@ -261,7 +256,6 @@ async function handleMainMenu(session: USSDSession, input: string): Promise<stri
   return `CON Invalid option.\n${MAIN_MENU_TEXT}`;
 }
 
-// ---------- Help ----------
 function handleHelp(session: USSDSession, input: string): string {
   if (input === '0') {
     updateSession(session.sessionId, { step: 'MAIN_MENU' });
@@ -286,14 +280,13 @@ function handleHelp(session: USSDSession, input: string): string {
   return 'CON Invalid option.\n1. How to Contribute\n2. How Payouts Work\n3. Contact Admin\n0. Back';
 }
 
-// ---------- Check Cycle Status: circle selection (when member has multiple) ----------
 async function handleStatusSelectCircle(session: USSDSession, input: string): Promise<string> {
   if (input === '0') {
     updateSession(session.sessionId, { step: 'MAIN_MENU' });
     return `CON Welcome back!\n${MAIN_MENU_TEXT}`;
   }
 
-  const circleIds: string[] = session.data.statusCircleIds || [];
+  const circleIds: number[] = session.data.statusCircleIds || [];
   const index = parseInt(input, 10) - 1;
   const circleId = circleIds[index];
 
@@ -306,14 +299,13 @@ async function handleStatusSelectCircle(session: USSDSession, input: string): Pr
   return status;
 }
 
-// ---------- Join circle flow ----------
 async function handleJoinCircleSelect(session: USSDSession, input: string): Promise<string> {
   if (input === '0') {
     updateSession(session.sessionId, { step: 'MAIN_MENU' });
     return `CON Welcome back!\n${MAIN_MENU_TEXT}`;
   }
 
-  const circleIds: string[] = session.data.allCircleIds || [];
+  const circleIds: number[] = session.data.allCircleIds || [];
   const index = parseInt(input, 10) - 1;
   const circleId = circleIds[index];
 
@@ -329,28 +321,25 @@ async function handleJoinCircleSelect(session: USSDSession, input: string): Prom
     return 'END Something went wrong. Please try again.';
   }
 
-  const alreadyIn = await isMemberInCircle(circle, member._id);
+  const alreadyIn = await isMemberInCircle(circle.id, member.id);
   if (alreadyIn) {
     endSession(session.sessionId);
     return `END You are already a member of ${circle.name}.`;
   }
 
-  await joinCircle(circle, member._id);
-  member.circles.push(circle._id as any);
-  await member.save();
+  await joinCircle(circle.id, member.id);
 
   endSession(session.sessionId);
   return `END You have joined ${circle.name}!\nContribution amount: MK${circle.contributionAmount} per cycle.`;
 }
 
-// ---------- Contribution flow ----------
 async function handleSelectCircle(session: USSDSession, input: string): Promise<string> {
   if (input === '0') {
     updateSession(session.sessionId, { step: 'MAIN_MENU' });
     return `CON Welcome back!\n${MAIN_MENU_TEXT}`;
   }
 
-  const circleIds: string[] = session.data.circleIds || [];
+  const circleIds: number[] = session.data.circleIds || [];
   const index = parseInt(input, 10) - 1;
   const circleId = circleIds[index];
 
@@ -398,24 +387,24 @@ async function handleConfirmPayment(session: USSDSession, input: string): Promis
 
   const reference = await generateReference();
 
-  await Contribution.create({
-    member: member._id,
-    circle: circle._id,
+  db.insert(contributions).values({
+    memberId: member.id,
+    circleId: circle.id,
     cycleNumber: circle.cycleNumber,
     amount,
     reference,
     status: 'completed',
-  });
+  }).run();
 
-  await WalletTransaction.create({
-    member: member._id,
+  db.insert(walletTransactions).values({
+    memberId: member.id,
     walletType: 'contribution',
     direction: 'credit',
     amount,
     reference,
-  });
+  }).run();
 
-  const payout = await checkAndProcessPayout(circle._id.toString());
+  const payout = await checkAndProcessPayout(circle.id);
 
   endSession(session.sessionId);
 
@@ -426,29 +415,32 @@ async function handleConfirmPayment(session: USSDSession, input: string): Promis
   return `END Payment Successful!\nReference: ${reference}`;
 }
 
-// ---------- Helpers ----------
 async function getBalanceSummary(memberId: string) {
   const member = await findMemberById(memberId);
   if (!member) return { contribution: 0, disbursement: 0, fee: 0 };
 
   const [contribution, disbursement, fee] = await Promise.all([
-    getWalletBalance(member._id.toString(), 'contribution'),
-    getWalletBalance(member._id.toString(), 'disbursement'),
-    getWalletBalance(member._id.toString(), 'fee'),
+    getWalletBalance(member.id, 'contribution'),
+    getWalletBalance(member.id, 'disbursement'),
+    getWalletBalance(member.id, 'fee'),
   ]);
 
   return { contribution, disbursement, fee };
 }
 
-async function getCycleStatusText(circleId: string): Promise<string> {
+async function getCycleStatusText(circleId: number): Promise<string> {
   const circle = await findCircleById(circleId);
   if (!circle) return 'END Circle not found.';
 
-  const populated: any = await getCircleWithPayoutOrder(circle);
-  const contributionsCount = await countCompletedContributions(populated._id, populated.cycleNumber);
+  const populated = await getCircleWithPayoutOrder(circleId);
+  if (!populated) return 'END Circle not found.';
 
-  const nextPayoutMember = populated.payoutOrder?.[populated.currentPayoutIndex];
+  const contributionsCount = await countCompletedContributions(circleId, circle.cycleNumber);
+
+  const nextPayoutMember = (populated as any).payoutOrder?.[circle.currentPayoutIndex];
   const nextPayoutLabel = nextPayoutMember?.memberId ?? 'N/A';
 
-  return `END ${populated.name} Status:\nCycle Number: C${populated.cycleNumber}\nTotal Members: ${populated.members.length}\nContributions Paid: ${contributionsCount}\nNext Payout: Member ${nextPayoutLabel}`;
+  const mCount = (populated as any).payoutOrder?.length ?? 0;
+
+  return `END ${circle.name} Status:\nCycle Number: C${circle.cycleNumber}\nTotal Members: ${mCount}\nContributions Paid: ${contributionsCount}\nNext Payout: Member ${nextPayoutLabel}`;
 }
