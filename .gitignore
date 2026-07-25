@@ -31,6 +31,9 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 
+# SQLite database
+ussdbnd/data/
+
 # Vite
 ussdc/dist-ssr/
 ussdc/*.local

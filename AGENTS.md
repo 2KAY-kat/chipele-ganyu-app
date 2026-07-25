@@ -24,7 +24,7 @@
 
 - Dependencies and `.env` are already set up — do **not** reinstall or re-run env setup.
 - README says `npm run install all` (typo) — the real command is `npm run install:all`.
-- Backend `.env` must have `MONGO_URI` and `PORT`. See `ussdbnd/.env.example`.
+- Backend `.env` must have `DATABASE_URL` and `PORT`. See `ussdbnd/.env.example`.
 
 ## Backend quirks
 
