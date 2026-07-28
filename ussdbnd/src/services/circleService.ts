@@ -157,15 +157,23 @@ export async function checkAndProcessPayout(
   return { recipientMemberId: recipient.memberId, amount: poolAmount, reference };
 }
 
-export async function createNewCycle(circleId: number): Promise<{ cycleNumber: number } | null> {
-  const circle = db.select().from(circles).where(eq(circles.id, circleId)).get();
-  if (!circle) return null;
+export async function createCustomCycle(
+  name: string,
+  contributionAmount: number,
+  code: string
+): Promise<number> {
+  const result = db.insert(circles).values({
+    name,
+    code,
+    contributionAmount,
+    cycleNumber: 1,
+    currentPayoutIndex: 0,
+    status: 'active',
+  }).returning({ id: circles.id }).get();
 
-  const newCycleNumber = circle.cycleNumber + 1;
-  db.update(circles)
-    .set({ cycleNumber: newCycleNumber, currentPayoutIndex: 0 })
-    .where(eq(circles.id, circleId))
-    .run();
+  return result.id;
+}
 
-  return { cycleNumber: newCycleNumber };
+export async function findCircleByCode(code: string) {
+  return db.select().from(circles).where(eq(circles.code, code)).get();
 }

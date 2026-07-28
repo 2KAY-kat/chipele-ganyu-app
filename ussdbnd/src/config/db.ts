@@ -23,6 +23,12 @@ export async function connectDB(): Promise<void> {
 }
 
 function createTables(): void {
+  try {
+    sqlite.exec(`ALTER TABLE circles ADD COLUMN code TEXT UNIQUE`);
+  } catch {
+    // column may already exist
+  }
+
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS members (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,6 +43,7 @@ function createTables(): void {
     CREATE TABLE IF NOT EXISTS circles (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
+      code TEXT UNIQUE,
       cycle_number INTEGER NOT NULL DEFAULT 1,
       contribution_amount INTEGER NOT NULL,
       current_payout_index INTEGER NOT NULL DEFAULT 0,
