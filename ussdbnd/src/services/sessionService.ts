@@ -15,6 +15,7 @@ export type USSDStep =
   | 'STATUS_SELECT_CIRCLE'
   | 'CYCLE_STATUS'
   | 'HELP'
+  | 'CREATE_CYCLE_SELECT'
   | 'EXIT';
 
 export interface USSDSession {

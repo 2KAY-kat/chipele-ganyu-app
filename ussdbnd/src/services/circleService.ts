@@ -156,3 +156,16 @@ export async function checkAndProcessPayout(
 
   return { recipientMemberId: recipient.memberId, amount: poolAmount, reference };
 }
+
+export async function createNewCycle(circleId: number): Promise<{ cycleNumber: number } | null> {
+  const circle = db.select().from(circles).where(eq(circles.id, circleId)).get();
+  if (!circle) return null;
+
+  const newCycleNumber = circle.cycleNumber + 1;
+  db.update(circles)
+    .set({ cycleNumber: newCycleNumber, currentPayoutIndex: 0 })
+    .where(eq(circles.id, circleId))
+    .run();
+
+  return { cycleNumber: newCycleNumber };
+}

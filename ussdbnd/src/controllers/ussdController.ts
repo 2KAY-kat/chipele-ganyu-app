@@ -17,6 +17,7 @@ import {
   joinCircle,
   isMemberInCircle,
   checkAndProcessPayout,
+  createNewCycle,
 } from '../services/circleService';
 import { getWalletBalance } from '../services/walletService';
 
@@ -76,6 +77,8 @@ async function routeStep(session: USSDSession, input: string): Promise<string> {
       return handleJoinCircleSelect(session, input);
     case 'STATUS_SELECT_CIRCLE':
       return handleStatusSelectCircle(session, input);
+    case 'CREATE_CYCLE_SELECT':
+      return handleCreateCycleSelect(session, input);
     case 'HELP':
       return handleHelp(session, input);
     default:
@@ -85,7 +88,7 @@ async function routeStep(session: USSDSession, input: string): Promise<string> {
 }
 
 const MAIN_MENU_TEXT =
-  '1. Make Contribution\n2. Check Balance\n3. Check Cycle Status\n4. Join a Circle\n5. Help\n0. Logout';
+  '1. Make Contribution\n2. Check Balance\n3. Check Cycle Status\n4. Join a Circle\n5. Help\n6. Create a Cycle\n0. Logout';
 
 function handleWelcome(session: USSDSession, input: string): string {
   if (input === '') {
@@ -246,6 +249,25 @@ async function handleMainMenu(session: USSDSession, input: string): Promise<stri
   if (input === '5') {
     updateSession(session.sessionId, { step: 'HELP' });
     return 'CON Help / Support\n1. How to Contribute\n2. How Payouts Work\n3. Contact Admin\n0. Back';
+  }
+
+  if (input === '6') {
+    const member = await getMemberWithCircles(session.memberId!);
+    if (!member || member.circles.length === 0) {
+      endSession(session.sessionId);
+      return 'END You are not part of any savings circle yet.\nSelect option 4 next time to join one.';
+    }
+
+    const circleOptions = member.circles
+      .map((c, i) => `${i + 1}. ${c.name} (MK${c.contributionAmount})`)
+      .join('\n');
+
+    updateSession(session.sessionId, {
+      step: 'CREATE_CYCLE_SELECT',
+      data: { ...session.data, createCycleCircleIds: member.circles.map((c) => c.id) },
+    });
+
+    return `CON Select Circle to create a new cycle:\n${circleOptions}\n0. Back`;
   }
 
   if (input === '0') {
@@ -413,6 +435,36 @@ async function handleConfirmPayment(session: USSDSession, input: string): Promis
   }
 
   return `END Payment Successful!\nReference: ${reference}`;
+}
+
+async function handleCreateCycleSelect(session: USSDSession, input: string): Promise<string> {
+  if (input === '0') {
+    updateSession(session.sessionId, { step: 'MAIN_MENU' });
+    return `CON Welcome back!\n${MAIN_MENU_TEXT}`;
+  }
+
+  const circleIds: number[] = session.data.createCycleCircleIds || [];
+  const index = parseInt(input, 10) - 1;
+  const circleId = circleIds[index];
+
+  if (!circleId) {
+    return 'CON Invalid selection. Please try again.\n0. Back';
+  }
+
+  const circle = await findCircleById(circleId);
+  if (!circle) {
+    endSession(session.sessionId);
+    return 'END Circle not found.';
+  }
+
+  const result = await createNewCycle(circleId);
+  if (!result) {
+    endSession(session.sessionId);
+    return 'END Could not create cycle. Please try again.';
+  }
+
+  endSession(session.sessionId);
+  return `END New cycle created for ${circle.name}!\nCycle Number: C${result.cycleNumber}`;
 }
 
 async function getBalanceSummary(memberId: string) {
