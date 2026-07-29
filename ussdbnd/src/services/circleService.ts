@@ -156,3 +156,24 @@ export async function checkAndProcessPayout(
 
   return { recipientMemberId: recipient.memberId, amount: poolAmount, reference };
 }
+
+export async function createCustomCycle(
+  name: string,
+  contributionAmount: number,
+  code: string
+): Promise<number> {
+  const result = db.insert(circles).values({
+    name,
+    code,
+    contributionAmount,
+    cycleNumber: 1,
+    currentPayoutIndex: 0,
+    status: 'active',
+  }).returning({ id: circles.id }).get();
+
+  return result.id;
+}
+
+export async function findCircleByCode(code: string) {
+  return db.select().from(circles).where(eq(circles.code, code)).get();
+}

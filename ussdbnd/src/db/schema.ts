@@ -14,6 +14,7 @@ export const members = sqliteTable('members', {
 export const circles = sqliteTable('circles', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
+  code: text('code').unique(),
   cycleNumber: integer('cycle_number').notNull().default(1),
   contributionAmount: integer('contribution_amount').notNull(),
   currentPayoutIndex: integer('current_payout_index').notNull().default(0),

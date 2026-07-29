@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { db } from '../config/db';
 import { contributions, walletTransactions } from '../db/schema';
 import { getSession, updateSession, endSession, USSDSession } from '../services/sessionService';
-import { generateMemberId, generateReference } from '../utils/referenceGenerator';
+import { generateMemberId, generateReference, generateCycleCode } from '../utils/referenceGenerator';
 import {
   findMemberById,
   findMemberByNationalId,
@@ -18,6 +18,8 @@ import {
   joinCircle,
   isMemberInCircle,
   checkAndProcessPayout,
+  createCustomCycle,
+  findCircleByCode,
 } from '../services/circleService';
 import { getWalletBalance } from '../services/walletService';
 
@@ -77,6 +79,14 @@ async function routeStep(session: USSDSession, input: string): Promise<string> {
       return handleJoinCircleSelect(session, input);
     case 'STATUS_SELECT_CIRCLE':
       return handleStatusSelectCircle(session, input);
+    case 'CREATE_CYCLE_NAME':
+      return handleCreateCycleName(session, input);
+    case 'CREATE_CYCLE_AMOUNT':
+      return handleCreateCycleAmount(session, input);
+    case 'JOIN_CHOICE':
+      return handleJoinChoice(session, input);
+    case 'JOIN_BY_CODE':
+      return handleJoinByCode(session, input);
     case 'HELP':
       return handleHelp(session, input);
     default:
@@ -86,7 +96,7 @@ async function routeStep(session: USSDSession, input: string): Promise<string> {
 }
 
 const MAIN_MENU_TEXT =
-  '1. Make Contribution\n2. Check Balance\n3. Check Cycle Status\n4. Join a Circle\n5. Help\n0. Logout';
+  '1. Make Contribution\n2. Check Balance\n3. Check Cycle Status\n4. Join a Circle\n5. Help\n6. Create a Cycle\n0. Logout';
 
 function handleWelcome(session: USSDSession, input: string): string {
   if (input === '') {
@@ -238,22 +248,18 @@ async function handleMainMenu(session: USSDSession, input: string): Promise<stri
   }
 
   if (input === '4') {
-    const allCircles = await getAllCircles();
-    const options = allCircles
-      .map((c, i) => `${i + 1}. ${c.name} (MK${c.contributionAmount})`)
-      .join('\n');
-
-    updateSession(session.sessionId, {
-      step: 'JOIN_CIRCLE_SELECT',
-      data: { ...session.data, allCircleIds: allCircles.map((c) => c.id) },
-    });
-
-    return `CON Select a Circle to Join:\n${options}\n0. Back`;
+    updateSession(session.sessionId, { step: 'JOIN_CHOICE' });
+    return 'CON Join a Circle\n1. Browse Circles\n2. Enter Cycle Code\n0. Back';
   }
 
   if (input === '5') {
     updateSession(session.sessionId, { step: 'HELP' });
     return 'CON Help / Support\n1. How to Contribute\n2. How Payouts Work\n3. Contact Admin\n0. Back';
+  }
+
+  if (input === '6') {
+    updateSession(session.sessionId, { step: 'CREATE_CYCLE_NAME' });
+    return 'CON Enter a name for your custom cycle:';
   }
 
   if (input === '0') {
@@ -421,6 +427,98 @@ async function handleConfirmPayment(session: USSDSession, input: string): Promis
   }
 
   return `END Payment Successful!\nReference: ${reference}`;
+}
+
+async function handleCreateCycleName(session: USSDSession, input: string): Promise<string> {
+  if (input === '0') {
+    updateSession(session.sessionId, { step: 'MAIN_MENU' });
+    return `CON Welcome back!\n${MAIN_MENU_TEXT}`;
+  }
+
+  updateSession(session.sessionId, {
+    step: 'CREATE_CYCLE_AMOUNT',
+    data: { ...session.data, newCycleName: input },
+  });
+  return 'CON Enter contribution amount (MK):';
+}
+
+async function handleCreateCycleAmount(session: USSDSession, input: string): Promise<string> {
+  if (input === '0') {
+    updateSession(session.sessionId, { step: 'MAIN_MENU' });
+    return `CON Welcome back!\n${MAIN_MENU_TEXT}`;
+  }
+
+  const amount = parseInt(input, 10);
+  if (isNaN(amount) || amount <= 0) {
+    return 'CON Invalid amount. Enter a valid contribution amount (MK):';
+  }
+
+  const name = session.data.newCycleName;
+  const code = await generateCycleCode();
+
+  await createCustomCycle(name, amount, code);
+
+  endSession(session.sessionId);
+  return `END Custom cycle created!\nName: ${name}\nAmount: MK${amount}\nCycle Code: ${code}\n\nShare this code for others to join.`;
+}
+
+async function handleJoinChoice(session: USSDSession, input: string): Promise<string> {
+  if (input === '0') {
+    updateSession(session.sessionId, { step: 'MAIN_MENU' });
+    return `CON Welcome back!\n${MAIN_MENU_TEXT}`;
+  }
+
+  if (input === '1') {
+    const allCircles = await getAllCircles();
+    const options = allCircles
+      .map((c, i) => `${i + 1}. ${c.name} (MK${c.contributionAmount})`)
+      .join('\n');
+
+    updateSession(session.sessionId, {
+      step: 'JOIN_CIRCLE_SELECT',
+      data: { ...session.data, allCircleIds: allCircles.map((c) => c.id) },
+    });
+
+    return `CON Select a Circle to Join:\n${options}\n0. Back`;
+  }
+
+  if (input === '2') {
+    updateSession(session.sessionId, { step: 'JOIN_BY_CODE' });
+    return 'CON Enter the cycle code (e.g., CYC001):';
+  }
+
+  return 'CON Invalid option.\n1. Browse Circles\n2. Enter Cycle Code\n0. Back';
+}
+
+async function handleJoinByCode(session: USSDSession, input: string): Promise<string> {
+  if (input === '0') {
+    updateSession(session.sessionId, { step: 'MAIN_MENU' });
+    return `CON Welcome back!\n${MAIN_MENU_TEXT}`;
+  }
+
+  const code = input.toUpperCase().trim();
+  const circle = await findCircleByCode(code);
+
+  if (!circle) {
+    return 'CON Cycle code not found. Check the code and try again:\n0. Back';
+  }
+
+  const member = await findMemberById(session.memberId!);
+  if (!member) {
+    endSession(session.sessionId);
+    return 'END Something went wrong. Please try again.';
+  }
+
+  const alreadyIn = await isMemberInCircle(circle.id, member.id);
+  if (alreadyIn) {
+    endSession(session.sessionId);
+    return `END You are already a member of ${circle.name}.`;
+  }
+
+  await joinCircle(circle.id, member.id);
+
+  endSession(session.sessionId);
+  return `END You have joined ${circle.name}!\nContribution amount: MK${circle.contributionAmount} per cycle.`;
 }
 
 async function getBalanceSummary(memberId: string) {

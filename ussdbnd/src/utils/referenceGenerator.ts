@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../config/db';
-import { members, contributions } from '../db/schema';
+import { members, contributions, circles } from '../db/schema';
 
 export async function generateMemberId(): Promise<string> {
   const result = db.select({ count: sql<number>`COUNT(*)` }).from(members).get();
@@ -34,6 +34,31 @@ export async function generateReference(): Promise<string> {
     const rand = Math.floor(Math.random() * 9000 + 1000);
     candidate = `RCC-${rand}`;
     exists = db.select().from(contributions).where(eq(contributions.reference, candidate)).get();
+  } while (exists);
+  return candidate;
+}
+
+export async function generateCycleCode(): Promise<string> {
+  const result = db.select({ count: sql<number>`COUNT(*)` }).from(circles).get();
+  const next = (result?.count ?? 0) + 1;
+  const padded = String(next).padStart(3, '0');
+  const candidate = `CYC${padded}`;
+
+  const exists = db.select().from(circles).where(eq(circles.code, candidate)).get();
+  if (exists) {
+    return generateFallbackCycleCode();
+  }
+
+  return candidate;
+}
+
+async function generateFallbackCycleCode(): Promise<string> {
+  let candidate: string;
+  let exists;
+  do {
+    const rand = Math.floor(Math.random() * 9000 + 1000);
+    candidate = `CYC${rand}`;
+    exists = db.select().from(circles).where(eq(circles.code, candidate)).get();
   } while (exists);
   return candidate;
 }
