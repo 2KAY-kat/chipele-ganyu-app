@@ -5,6 +5,7 @@ import { getSession, updateSession, endSession, USSDSession } from '../services/
 import { generateMemberId, generateReference } from '../utils/referenceGenerator';
 import {
   findMemberById,
+  findMemberByNationalId,
   verifyMemberPin,
   createMember,
   getMemberWithCircles,
@@ -136,6 +137,13 @@ async function handleRegisterPin(session: USSDSession, input: string): Promise<s
   }
 
   const { fullName, nationalId, mobileMoneyNumber } = session.data;
+
+  const existing = await findMemberByNationalId(nationalId);
+  if (existing) {
+    endSession(session.sessionId);
+    return 'END A member with that National ID is already registered. Please dial *123# to login.';
+  }
+
   const memberId = await generateMemberId();
 
   await createMember({

@@ -29,7 +29,7 @@ codalbit/
 
 ```bash
    npm install
-   npm run install all
+   npm run install:all
 ```
 
 3. **Configure environment variables**

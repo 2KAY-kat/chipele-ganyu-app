@@ -1,4 +1,3 @@
-// src/App.tsx
 import { useState } from 'react';
 
 const API_URL = 'http://localhost:5001/api/ussd';
@@ -101,7 +100,7 @@ export default function App() {
               <span>Chipeleganyu</span>
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-[#7ED321] rounded-full animate-pulse shadow-[0_0_6px_#7ED321]" />
-                USSD
+                Online
               </span>
             </div>
             <div className="bg-gradient-to-b from-[#0d1a0a] to-[#0a140a] rounded-2xl p-4 min-h-[320px] border border-[#1c2e18] shadow-inner shadow-black/60">
@@ -130,7 +129,7 @@ export default function App() {
                     value={currentInput}
                     onChange={(e) => setCurrentInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && submitInput()}
-                    placeholder="Type your response..."
+                    inputMode="numeric" placeholder="Type your response..."
                     className="w-full bg-[#111411] text-white text-sm px-4 py-3 rounded-2xl outline-none border border-[#2a2e2a] focus:border-[#7ED321] transition placeholder:text-[#5a625a]"
                     disabled={loading}
                   />

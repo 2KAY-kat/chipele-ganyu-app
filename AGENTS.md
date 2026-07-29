@@ -2,19 +2,19 @@
 
 ## Monorepo layout
 
-- `ussdbnd/` — backend (Express + TypeScript + MongoDB, CommonJS)
+- `ussdbnd/` — backend (Express + TypeScript + SQLite via Drizzle ORM, CommonJS)
 - `ussdc/` — frontend (React + Vite + Tailwind, ESM)
 
 ## Entrypoints
 
-- Backend: `ussdbnd/src/index.ts` — Express app, connects to MongoDB, seeds default circles on startup
+- Backend: `ussdbnd/src/index.ts` — Express app, connects to SQLite, seeds default circles on startup
 - Frontend: `ussdc/src/main.tsx` — Vite React app, USSD phone simulator
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Start both backend (`:5000`) and frontend (`:5173`) via concurrently |
+| `npm run dev` | Start both backend (`:5001`) and frontend (`:5173`) via concurrently |
 | `npm run dev:backend` | Backend only (uses `tsx watch`, no compile step) |
 | `npm run dev:client` | Frontend only (`vite`) |
 | `npm run install:all` | Install deps in both packages |

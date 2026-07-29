@@ -7,6 +7,10 @@ export async function findMemberById(memberId: string) {
   return db.select().from(members).where(eq(members.memberId, memberId)).get();
 }
 
+export async function findMemberByNationalId(nationalId: string) {
+  return db.select().from(members).where(eq(members.nationalId, nationalId)).get();
+}
+
 export async function verifyMemberPin(member: typeof members.$inferSelect, pin: string): Promise<boolean> {
   return bcrypt.compare(pin, member.pinHash);
 }
