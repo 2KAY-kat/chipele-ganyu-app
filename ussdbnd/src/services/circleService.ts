@@ -106,55 +106,67 @@ export async function joinCircle(circleId: number, memberId: number): Promise<vo
 export async function checkAndProcessPayout(
   circleId: number
 ): Promise<{ recipientMemberId: string; amount: number; reference: string } | null> {
-  const circle = db.select().from(circles).where(eq(circles.id, circleId)).get();
-  if (!circle) return null;
-
-  const mCount = await getMemberCount(circleId);
-  if (mCount === 0) return null;
-
-  const paidCount = await countCompletedContributions(circleId, circle.cycleNumber);
-  if (paidCount < mCount) return null;
-
-  const payoutOrder = db.select({
-    id: members.id,
-    memberId: members.memberId,
-  })
-    .from(circleMembers)
-    .innerJoin(members, eq(circleMembers.memberId, members.id))
-    .where(eq(circleMembers.circleId, circleId))
-    .orderBy(circleMembers.payoutOrderIndex)
-    .all();
-
-  const recipient = payoutOrder[circle.currentPayoutIndex];
-  if (!recipient) return null;
-
-  const poolResult = db.select({ total: sql<number>`COALESCE(SUM(amount), 0)` })
-    .from(contributions)
-    .where(and(
-      eq(contributions.circleId, circleId),
-      eq(contributions.cycleNumber, circle.cycleNumber),
-      eq(contributions.status, 'completed')
-    ))
-    .get();
-  const poolAmount = poolResult?.total ?? 0;
-
   const reference = await generateReference();
 
-  db.insert(walletTransactions).values({
-    memberId: recipient.id,
-    walletType: 'disbursement',
-    direction: 'credit',
-    amount: poolAmount,
-    reference,
-  }).run();
+  return db.transaction((tx) => {
+    const circle = tx.select().from(circles).where(eq(circles.id, circleId)).get();
+    if (!circle) return null;
 
-  const newIndex = (circle.currentPayoutIndex + 1) % payoutOrder.length;
-  db.update(circles)
-    .set({ currentPayoutIndex: newIndex, cycleNumber: circle.cycleNumber + 1 })
-    .where(eq(circles.id, circleId))
-    .run();
+    const mCount = tx.select({ count: sql<number>`COUNT(*)` })
+      .from(circleMembers)
+      .where(eq(circleMembers.circleId, circleId))
+      .get()?.count ?? 0;
+    if (mCount === 0) return null;
 
-  return { recipientMemberId: recipient.memberId, amount: poolAmount, reference };
+    const paidCount = tx.select({ count: sql<number>`COUNT(*)` })
+      .from(contributions)
+      .where(and(
+        eq(contributions.circleId, circleId),
+        eq(contributions.cycleNumber, circle.cycleNumber),
+        eq(contributions.status, 'completed')
+      ))
+      .get()?.count ?? 0;
+    if (paidCount < mCount) return null;
+
+    const payoutOrder = tx.select({
+      id: members.id,
+      memberId: members.memberId,
+    })
+      .from(circleMembers)
+      .innerJoin(members, eq(circleMembers.memberId, members.id))
+      .where(eq(circleMembers.circleId, circleId))
+      .orderBy(circleMembers.payoutOrderIndex)
+      .all();
+
+    const recipient = payoutOrder[circle.currentPayoutIndex];
+    if (!recipient) return null;
+
+    const poolResult = tx.select({ total: sql<number>`COALESCE(SUM(amount), 0)` })
+      .from(contributions)
+      .where(and(
+        eq(contributions.circleId, circleId),
+        eq(contributions.cycleNumber, circle.cycleNumber),
+        eq(contributions.status, 'completed')
+      ))
+      .get();
+    const poolAmount = poolResult?.total ?? 0;
+
+    tx.insert(walletTransactions).values({
+      memberId: recipient.id,
+      walletType: 'disbursement',
+      direction: 'credit',
+      amount: poolAmount,
+      reference,
+    }).run();
+
+    const newIndex = (circle.currentPayoutIndex + 1) % payoutOrder.length;
+    tx.update(circles)
+      .set({ currentPayoutIndex: newIndex, cycleNumber: circle.cycleNumber + 1 })
+      .where(eq(circles.id, circleId))
+      .run();
+
+    return { recipientMemberId: recipient.memberId, amount: poolAmount, reference };
+  });
 }
 
 export async function createCustomCycle(

@@ -104,7 +104,7 @@ function handleWelcome(session: USSDSession, input: string): string {
   }
   if (input === '1') {
     updateSession(session.sessionId, { step: 'REGISTER_NAME' });
-    return 'CON Enter your Full Name:';
+    return 'CON Enter your Full Name:\n0. Back';
   }
   if (input === '2') {
     updateSession(session.sessionId, { step: 'LOGIN_MEMBER_ID' });
@@ -118,32 +118,52 @@ function handleWelcome(session: USSDSession, input: string): string {
 }
 
 function handleRegisterName(session: USSDSession, input: string): string {
+  if (input === '0') {
+    updateSession(session.sessionId, { step: 'WELCOME' });
+    return 'CON Welcome to RCC Cooperative!\n1. Register\n2. Login\n0. Exit';
+  }
+
   updateSession(session.sessionId, {
     step: 'REGISTER_NATIONAL_ID',
     data: { ...session.data, fullName: input },
   });
-  return 'CON Enter National ID:';
+  return 'CON Enter National ID:\n0. Back';
 }
 
 function handleRegisterNationalId(session: USSDSession, input: string): string {
+  if (input === '0') {
+    updateSession(session.sessionId, { step: 'WELCOME' });
+    return 'CON Welcome to RCC Cooperative!\n1. Register\n2. Login\n0. Exit';
+  }
+
   updateSession(session.sessionId, {
     step: 'REGISTER_MOBILE_MONEY',
     data: { ...session.data, nationalId: input },
   });
-  return 'CON Enter Mobile Money Number:';
+  return 'CON Enter Mobile Money Number:\n0. Back';
 }
 
 function handleRegisterMobileMoney(session: USSDSession, input: string): string {
+  if (input === '0') {
+    updateSession(session.sessionId, { step: 'WELCOME' });
+    return 'CON Welcome to RCC Cooperative!\n1. Register\n2. Login\n0. Exit';
+  }
+
   updateSession(session.sessionId, {
     step: 'REGISTER_PIN',
     data: { ...session.data, mobileMoneyNumber: input },
   });
-  return 'CON Set a 4-digit PIN:';
+  return 'CON Set a 4-digit PIN:\n0. Back';
 }
 
 async function handleRegisterPin(session: USSDSession, input: string): Promise<string> {
+  if (input === '0') {
+    updateSession(session.sessionId, { step: 'WELCOME' });
+    return 'CON Welcome to RCC Cooperative!\n1. Register\n2. Login\n0. Exit';
+  }
+
   if (!/^\d{4}$/.test(input)) {
-    return 'CON PIN must be exactly 4 digits. Set a 4-digit PIN:';
+    return 'CON PIN must be exactly 4 digits. Set a 4-digit PIN:\n0. Back';
   }
 
   const { fullName, nationalId, mobileMoneyNumber } = session.data;

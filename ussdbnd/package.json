@@ -13,7 +13,6 @@
   "type": "commonjs",
   "dependencies": {
     "bcrypt": "^6.0.0",
-
     "better-sqlite3": "^11.9.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -26,6 +25,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.1",
+    "drizzle-kit": "^0.31.10",
     "tsx": "^4.23.1"
   }
 }
