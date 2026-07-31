@@ -29,12 +29,39 @@ function createTables(): void {
     // column may already exist
   }
 
+  const nationalIdColumn = sqlite
+    .prepare(`SELECT COUNT(*) AS c FROM pragma_table_info('members') WHERE name = 'national_id'`)
+    .get() as { c: number };
+
+  if (nationalIdColumn.c > 0) {
+    sqlite.exec(`PRAGMA foreign_keys = OFF`);
+    try {
+      sqlite.exec(`
+        BEGIN;
+        CREATE TABLE members_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          member_id TEXT NOT NULL UNIQUE,
+          full_name TEXT NOT NULL,
+          mobile_money_number TEXT NOT NULL,
+          pin_hash TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now'))
+        );
+        INSERT INTO members_new (id, member_id, full_name, mobile_money_number, pin_hash, created_at)
+          SELECT id, member_id, full_name, mobile_money_number, pin_hash, created_at FROM members;
+        DROP TABLE members;
+        ALTER TABLE members_new RENAME TO members;
+        COMMIT;
+      `);
+    } finally {
+      sqlite.exec(`PRAGMA foreign_keys = ON`);
+    }
+  }
+
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS members (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       member_id TEXT NOT NULL UNIQUE,
       full_name TEXT NOT NULL,
-      national_id TEXT NOT NULL UNIQUE,
       mobile_money_number TEXT NOT NULL,
       pin_hash TEXT NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))

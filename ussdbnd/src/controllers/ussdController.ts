@@ -5,7 +5,6 @@ import { getSession, updateSession, endSession, USSDSession } from '../services/
 import { generateMemberId, generateReference, generateCycleCode } from '../utils/referenceGenerator';
 import {
   findMemberById,
-  findMemberByNationalId,
   verifyMemberPin,
   createMember,
   getMemberWithCircles,
@@ -59,8 +58,6 @@ async function routeStep(session: USSDSession, input: string): Promise<string> {
       return handleWelcome(session, input);
     case 'REGISTER_NAME':
       return handleRegisterName(session, input);
-    case 'REGISTER_NATIONAL_ID':
-      return handleRegisterNationalId(session, input);
     case 'REGISTER_MOBILE_MONEY':
       return handleRegisterMobileMoney(session, input);
     case 'REGISTER_PIN':
@@ -124,21 +121,8 @@ function handleRegisterName(session: USSDSession, input: string): string {
   }
 
   updateSession(session.sessionId, {
-    step: 'REGISTER_NATIONAL_ID',
-    data: { ...session.data, fullName: input },
-  });
-  return 'CON Enter National ID:\n0. Back';
-}
-
-function handleRegisterNationalId(session: USSDSession, input: string): string {
-  if (input === '0') {
-    updateSession(session.sessionId, { step: 'WELCOME' });
-    return 'CON Welcome to RCC Cooperative!\n1. Register\n2. Login\n0. Exit';
-  }
-
-  updateSession(session.sessionId, {
     step: 'REGISTER_MOBILE_MONEY',
-    data: { ...session.data, nationalId: input },
+    data: { ...session.data, fullName: input },
   });
   return 'CON Enter Mobile Money Number:\n0. Back';
 }
@@ -166,20 +150,13 @@ async function handleRegisterPin(session: USSDSession, input: string): Promise<s
     return 'CON PIN must be exactly 4 digits. Set a 4-digit PIN:\n0. Back';
   }
 
-  const { fullName, nationalId, mobileMoneyNumber } = session.data;
-
-  const existing = await findMemberByNationalId(nationalId);
-  if (existing) {
-    endSession(session.sessionId);
-    return 'END A member with that National ID is already registered. Please dial *123# to login.';
-  }
+  const { fullName, mobileMoneyNumber } = session.data;
 
   const memberId = await generateMemberId();
 
   await createMember({
     memberId,
     fullName,
-    nationalId,
     mobileMoneyNumber,
     pin: input,
   });
