@@ -7,10 +7,6 @@ export async function findMemberById(memberId: string) {
   return db.select().from(members).where(eq(members.memberId, memberId)).get();
 }
 
-export async function findMemberByNationalId(nationalId: string) {
-  return db.select().from(members).where(eq(members.nationalId, nationalId)).get();
-}
-
 export async function verifyMemberPin(member: typeof members.$inferSelect, pin: string): Promise<boolean> {
   return bcrypt.compare(pin, member.pinHash);
 }
@@ -18,7 +14,6 @@ export async function verifyMemberPin(member: typeof members.$inferSelect, pin: 
 export async function createMember(data: {
   memberId: string;
   fullName: string;
-  nationalId: string;
   mobileMoneyNumber: string;
   pin: string;
 }) {
@@ -26,7 +21,6 @@ export async function createMember(data: {
   db.insert(members).values({
     memberId: data.memberId,
     fullName: data.fullName,
-    nationalId: data.nationalId,
     mobileMoneyNumber: data.mobileMoneyNumber,
     pinHash,
   }).run();

@@ -64,7 +64,7 @@ Open `http://localhost:5173` in your browser. Click **Dial *123#** to start a se
 
 ### Demo Flow
 
-1. **Register** — full name, national ID, mobile money number, 4-digit PIN → get a Member ID
+1. **Register** — full name, mobile money number, 4-digit PIN → get a Member ID
 2. **Login** — with your Member ID and PIN
 3. **Join a Circle** — choose from 5 fixed-tier circles (Circle A: MK500 up to Circle E: MK10,000)
 4. **Make a Contribution** — pays the circle's fixed amount; once all members in a circle have contributed for the cycle, the pooled amount automatically pays out to the next member in rotation

@@ -5,7 +5,6 @@ export const members = sqliteTable('members', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   memberId: text('member_id').notNull().unique(),
   fullName: text('full_name').notNull(),
-  nationalId: text('national_id').notNull().unique(),
   mobileMoneyNumber: text('mobile_money_number').notNull(),
   pinHash: text('pin_hash').notNull(),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
