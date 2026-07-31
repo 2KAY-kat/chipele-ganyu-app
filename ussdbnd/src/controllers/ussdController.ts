@@ -106,9 +106,9 @@ function handleWelcome(session: USSDSession, input: string): string {
     updateSession(session.sessionId, { step: 'REGISTER_NAME' });
     return 'CON Enter your Full Name:\n0. Back';
   }
-  if (input === '2') {
+ if (input === '2') {
     updateSession(session.sessionId, { step: 'LOGIN_MEMBER_ID' });
-    return 'CON Enter Member ID:';
+    return 'CON Enter Member ID:\n0. Back';
   }
   if (input === '0') {
     endSession(session.sessionId);
@@ -189,14 +189,24 @@ async function handleRegisterPin(session: USSDSession, input: string): Promise<s
 }
 
 function handleLoginMemberId(session: USSDSession, input: string): string {
+  if (input === '0') {
+    updateSession(session.sessionId, { step: 'WELCOME' });
+    return 'CON Welcome to RCC Cooperative!\n1. Register\n2. Login\n0. Exit';
+  }
+
   updateSession(session.sessionId, {
     step: 'LOGIN_PIN',
     data: { ...session.data, memberIdInput: input },
   });
-  return 'CON Enter PIN:';
+  return 'CON Enter PIN:\n0. Back';
 }
 
 async function handleLoginPin(session: USSDSession, input: string): Promise<string> {
+  if (input === '0') {
+    updateSession(session.sessionId, { step: 'LOGIN_MEMBER_ID' });
+    return 'CON Enter Member ID:\n0. Back';
+  }
+
   const member = await findMemberById(session.data.memberIdInput);
 
   if (!member) {
@@ -279,7 +289,7 @@ async function handleMainMenu(session: USSDSession, input: string): Promise<stri
 
   if (input === '6') {
     updateSession(session.sessionId, { step: 'CREATE_CYCLE_NAME' });
-    return 'CON Enter a name for your custom cycle:';
+    return 'CON Enter a name for your custom cycle:\n0. Back';
   }
 
   if (input === '0') {
@@ -397,17 +407,31 @@ async function handleSelectCircle(session: USSDSession, input: string): Promise<
     },
   });
 
-  return `CON You are about to pay MK${circle.contributionAmount} to ${circle.name}\n1. Confirm\n2. Cancel`;
+  return `CON You are about to pay MK${circle.contributionAmount} to ${circle.name}\n1. Confirm\n2. Cancel\n0. Back`;
 }
 
 async function handleConfirmPayment(session: USSDSession, input: string): Promise<string> {
-  if (input === '2') {
+  if (input === '0' || input === '2') {
+    if (input === '0') {
+      const member = await getMemberWithCircles(session.memberId!);
+      const circleOptions = (member?.circles ?? [])
+        .map((c, i) => `${i + 1}. ${c.name} (MK${c.contributionAmount})`)
+        .join('\n');
+
+      updateSession(session.sessionId, {
+        step: 'SELECT_CIRCLE',
+        data: { ...session.data, circleIds: (member?.circles ?? []).map((c) => c.id) },
+      });
+
+      return `CON Select Circle:\n${circleOptions}\n0. Back`;
+    }
+
     endSession(session.sessionId);
     return 'END Payment cancelled.';
   }
 
   if (input !== '1') {
-    return 'CON Invalid option.\n1. Confirm\n2. Cancel';
+    return 'CON Invalid option.\n1. Confirm\n2. Cancel\n0. Back';
   }
 
   const { selectedCircleId, amount } = session.data;
@@ -455,11 +479,11 @@ async function handleCreateCycleName(session: USSDSession, input: string): Promi
     return `CON Welcome back!\n${MAIN_MENU_TEXT}`;
   }
 
-  updateSession(session.sessionId, {
+ updateSession(session.sessionId, {
     step: 'CREATE_CYCLE_AMOUNT',
     data: { ...session.data, newCycleName: input },
   });
-  return 'CON Enter contribution amount (MK):';
+  return 'CON Enter contribution amount (MK):\n0. Back';
 }
 
 async function handleCreateCycleAmount(session: USSDSession, input: string): Promise<string> {
@@ -504,7 +528,7 @@ async function handleJoinChoice(session: USSDSession, input: string): Promise<st
 
   if (input === '2') {
     updateSession(session.sessionId, { step: 'JOIN_BY_CODE' });
-    return 'CON Enter the cycle code (e.g., CYC001):';
+    return 'CON Enter the cycle code (e.g., CYC001):\n0. Back';
   }
 
   return 'CON Invalid option.\n1. Browse Circles\n2. Enter Cycle Code\n0. Back';

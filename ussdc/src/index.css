@@ -1,3 +1,25 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --text: 14.05% 0.020 221.60;
+    --background: 98.71% 0.003 247.86;
+    --primary: 35.36% 0.064 231.46;
+    --secondary: 79.90% 0.066 225.38;
+    --accent: 74.53% 0.090 227.63;
+  }
+
+  .dark {
+    --text: 98.00% 0.009 222.05;
+    --background: 11.31% 0.011 251.82;
+    --primary: 86.24% 0.063 226.46;
+    --secondary: 43.41% 0.067 227.89;
+    --accent: 51.80% 0.089 231.23;
+  }
+
+  body {
+    @apply bg-background text-text;
+  }
+}
