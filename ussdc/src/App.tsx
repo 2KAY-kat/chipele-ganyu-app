@@ -129,7 +129,7 @@ export default function App() {
                     value={currentInput}
                     onChange={(e) => setCurrentInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && submitInput()}
-                    inputMode="numeric" placeholder="Type your response..."
+                    placeholder="Type your response..."
                     className="w-full bg-[#111411] text-white text-sm px-4 py-3 rounded-2xl outline-none border border-[#2a2e2a] focus:border-[#7ED321] transition placeholder:text-[#5a625a]"
                     disabled={loading}
                   />
