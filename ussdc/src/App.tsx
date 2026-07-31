@@ -83,8 +83,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 gap-10 flex-wrap">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-[120px]" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px]" />
       </div>
       <div className="relative w-[300px] z-10">
         <div className="bg-gradient-to-b from-[#1a1d1a] to-[#0d0f0d] rounded-[3rem] p-3 shadow-2xl shadow-black/80 border border-[#2a2e2a]">
@@ -118,7 +118,7 @@ export default function App() {
                 <button
                   onClick={startSession}
                   disabled={loading}
-                  className="w-full bg-primary hover:bg-secondary/25 active:scale-[0.98] text-black font-bold py-3.5 rounded-2xl transition disabled:opacity-50 shadow-lg shadow-primary/20"
+                  className="w-full bg-primary hover:bg-accent active:scale-[0.98] text-background font-bold py-3.5 rounded-2xl transition disabled:opacity-50 shadow-lg shadow-primary/20"
                 >
                   {screen.isEnd ? 'Dial *123# Again' : 'Dial *123#'}
                 </button>
@@ -136,7 +136,7 @@ export default function App() {
                   <button
                     onClick={submitInput}
                     disabled={loading || !currentInput.trim()}
-                    className="w-full bg-primary hover:bg-[#8fe32f] active:scale-[0.98] text-black font-bold py-3 rounded-2xl transition disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-[#7ED321]/20"
+                    className="w-full bg-primary hover:bg-accent active:scale-[0.98] text-background font-bold py-3.5 rounded-2xl transition disabled:opacity-50 shadow-lg shadow-primary/20"
                   >
                     Send
                   </button>
@@ -144,7 +144,7 @@ export default function App() {
               )}
               <button
                 onClick={resetSession}
-                className="w-full bg-secondary hover:bg-[#22261f] active:scale-[0.98] text-text text-sm py-2.5 rounded-2xl transition border border-[#2a2e2a]"
+                className="w-full bg-secondary/10 hover:bg-secondary/20 active:scale-[0.98] text-secondary text-sm py-2.5 rounded-2xl transition border border-secondary/30"
               >
                 Reset Session
               </button>
@@ -155,35 +155,36 @@ export default function App() {
           </div>
         </div>
 
-        <div className="text-center mt-4 text-[11px] text-[#5a625a] font-mono">
+        <div className="text-center mt-4 text-[11px] text-primary font-mono">
           {sessionId} · {phoneNumber}
         </div>
       </div>
-      <div className="w-[380px] z-10">
-        <div className="bg-[#0f120f]/90 backdrop-blur rounded-3xl border border-[#1e221e] shadow-2xl shadow-black/50 overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#1e221e] flex items-center justify-between bg-[#111411]">
-            <span className="text-white font-semibold text-sm flex items-center gap-2">
-              <span className="w-2 h-2 bg-[#7ED321] rounded-full shadow-[0_0_6px_#7ED321]" />
+      
+<div className="w-[380px] z-10">
+        <div className="bg-background/90 backdrop-blur rounded-3xl border border-secondary/20 shadow-2xl shadow-black/50 overflow-hidden">
+          <div className="px-5 py-4 border-b border-secondary/20 flex items-center justify-between bg-secondary/10">
+            <span className="text-text font-semibold text-sm flex items-center gap-2">
+              <span className="w-2 h-2 bg-primary rounded-full shadow-[0_0_6px_theme(colors.primary)]" />
               Session Log
             </span>
-            <span className="text-[#5a625a] text-xs font-mono">{log.length} events</span>
+            <span className="text-secondary text-xs font-mono">{log.length} events</span>
           </div>
           <div className="p-4 max-h-[560px] overflow-y-auto space-y-3 text-xs font-mono">
             {log.length === 0 && (
-              <div className="text-[#5a625a] italic px-1 py-8 text-center">
+              <div className="text-secondary italic px-1 py-8 text-center">
                 No activity yet — dial to begin.
               </div>
             )}
             {log.map((entry, i) =>
               entry.type === 'in' ? (
-                <div key={i} className="text-[#7ED321] px-1 font-semibold">
-                  <span className="text-[#5a625a]">→ </span>
+                <div key={i} className="text-primary px-1 font-semibold">
+                  <span className="text-secondary">→ </span>
                   {entry.text}
                 </div>
               ) : (
                 <div
                   key={i}
-                  className="text-[#d0d5d0] whitespace-pre-wrap bg-[#151815] rounded-xl px-3.5 py-2.5 border border-[#22261f]"
+                  className="text-text whitespace-pre-wrap bg-secondary/10 rounded-xl px-3.5 py-2.5 border border-secondary/20"
                 >
                   {entry.text}
                 </div>
